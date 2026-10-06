@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Pakistan vegetation greenness, Sep 2025 to Sep 2026</title>
+<style>
+:root {
+  --bg: #f6f3ea;
+  --paper: #fbf9f3;
+  --ink: #1e3326;
+  --ink-2: #3c5244;
+  --muted: #56655a;
+  --line: #e3ddcd;
+  --line-2: #cfc8b5;
+  --accent: #3f7a45;
+  --rabi: rgba(103, 140, 84, 0.2);
+  --kharif: rgba(176, 146, 74, 0.22);
+  --c-lower: #cdc58d;
+  --c-medium: #86ad66;
+  --c-higher: #4f8a4c;
+  --serif: "Iowan Old Style", "Charter", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --sans: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", system-ui, -apple-system, sans-serif;
+  --story-w: 360px;
+  --card-w: 344px;
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); overflow: hidden; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible, [contenteditable]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#scene.dragging { cursor: grabbing; }
+
+/* ---------- map labels, tooltip, cues ---------- */
+#labels { position: fixed; inset: 0; pointer-events: none; }
+.place { position: absolute; left: 0; top: 0; font-size: 12px; font-weight: 500; color: var(--ink-2); white-space: nowrap;
+  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 2px var(--bg); will-change: transform; display: none; }
+.place::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-2); margin-right: 5px; vertical-align: 2px; }
+.place.river { font-style: italic; font-weight: 400; color: #4d6a77; }
+.place.river::before { display: none; }
+
+#tip { position: fixed; left: 0; top: 0; pointer-events: none; background: var(--paper); border: 1px solid var(--line-2);
+  border-radius: 6px; padding: 7px 10px; font-size: 13px; line-height: 1.4; color: var(--ink); max-width: 260px;
+  box-shadow: 0 2px 8px rgba(30, 51, 38, 0.08); will-change: transform; }
+#tip b { font-weight: 600; }
+#tip span { color: var(--muted); display: block; }
+
+.mapcues { position: fixed; left: calc(var(--story-w) + 8px); bottom: 128px; display: flex; align-items: flex-end; gap: 14px; pointer-events: none; }
+.compass { width: 34px; height: 34px; }
+.scale { font-size: 12px; color: var(--muted); }
+.scale i { display: block; height: 6px; border: 1.5px solid var(--ink-2); border-top: 0; margin-bottom: 3px; width: 80px; }
+
+#swipe { position: fixed; top: 0; bottom: 0; width: 2px; background: var(--ink); left: 50%; cursor: ew-resize; touch-action: none; }
+#swipe span { position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+  background: var(--paper); border: 1.5px solid var(--ink); }
+#swipe span::before { content: "‹ ›"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; letter-spacing: 1px; }
+#swipe::after { content: ""; position: absolute; top: 0; bottom: 0; left: -14px; right: -14px; }
+.swipelab { position: fixed; top: 112px; font-size: 13px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; pointer-events: none; }
+
+/* ---------- story ---------- */
+.story { position: fixed; left: 0; top: 0; bottom: 0; width: var(--story-w); padding: 40px 24px 112px 44px;
+  display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: none; }
+.story::-webkit-scrollbar { display: none; }
+.where { font-size: 13px; letter-spacing: 0.02em; color: var(--muted); margin: 0 0 12px; }
+h1 { font: 600 32px/1.08 var(--serif); letter-spacing: -0.01em; margin: 0 0 10px; max-width: 13ch; }
+.sub { font-size: 14px; color: var(--muted); margin: 0 0 28px; max-width: 34ch; }
+[contenteditable] { border-radius: 3px; }
+.month { font-size: 13px; color: var(--muted); margin: 0; }
+.date { font: 600 54px/1 var(--serif); letter-spacing: -0.02em; margin: 4px 0 18px; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
+.callabel { font-size: 12px; color: var(--muted); margin: 0 0 2px; text-transform: none; }
+.caption { font: 500 20px/1.3 var(--serif); color: var(--ink); margin: 0 0 10px; min-height: 1.3em; }
+.seeing { font-size: 14px; color: var(--ink-2); margin: 0 0 22px; max-width: 34ch; min-height: 3em; }
+.legend .label { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.legend .bar { height: 8px; border-radius: 4px; max-width: 280px;
+  background: linear-gradient(90deg, #efe6d1, #e3d5b1, #d3c999, #b8c483, #93b56d, #6fa05a, #558a4d, #447546); }
+.legend .ticks { display: flex; justify-content: space-between; max-width: 280px; font-size: 12px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.method { margin-top: auto; padding-top: 18px; font-size: 13px; color: var(--ink-2); max-width: 36ch; }
+.method summary { cursor: pointer; color: var(--ink); font-weight: 500; list-style: none; padding: 6px 0; }
+.method summary::-webkit-details-marker { display: none; }
+.method summary::before { content: "+"; display: inline-block; width: 16px; color: var(--muted); }
+.method[open] summary::before { content: "–"; }
+.method summary small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; padding-left: 16px; }
+.method p { margin: 8px 0 0; line-height: 1.5; }
+
+/* ---------- toolbar ---------- */
+.toolbar { position: fixed; top: 20px; right: 28px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.tb, .seg { background: var(--paper); border: 1px solid var(--line-2); border-radius: 8px; height: 38px; }
+.tb { min-width: 38px; padding: 0 12px; cursor: pointer; display: inline-grid; place-items: center; font-size: 13px; }
+.tb.icon { padding: 0; width: 38px; }
+.tb svg { width: 16px; height: 16px; }
+.tb[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg { display: inline-flex; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: 0 10px; font-size: 13px; cursor: pointer; color: var(--ink-2); min-width: 34px; }
+.seg button.on { background: var(--ink); color: var(--paper); }
+.relief { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 13px; color: var(--muted); }
+.relief input { width: 86px; accent-color: var(--accent); }
+.presets { position: fixed; top: 66px; right: 28px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.presets button { white-space: nowrap; background: transparent; border: 0; border-bottom: 1.5px solid transparent; padding: 6px 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.presets button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.help { position: fixed; top: 64px; right: 28px; width: 300px; background: var(--paper); border: 1px solid var(--line-2); border-radius: 8px; padding: 14px 16px; font-size: 13px; z-index: 5; box-shadow: 0 4px 16px rgba(30,51,38,0.08); }
+.help h3 { font: 600 14px var(--sans); margin: 0 0 8px; }
+.help dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 0; }
+.help dt { font-weight: 600; white-space: nowrap; }
+.help dd { margin: 0; color: var(--ink-2); }
+
+/* ---------- stats card ---------- */
+.card { position: fixed; right: 28px; top: 112px; width: var(--card-w); max-height: calc(100% - 232px); overflow-y: auto;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px 16px; scrollbar-width: thin; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.card h2 { font: 600 15px var(--sans); margin: 0; }
+.link { background: none; border: 0; padding: 4px 0; color: var(--accent); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.big { font: 600 38px/1 var(--serif); margin: 4px 0 6px; font-variant-numeric: lining-nums tabular-nums; }
+.big small { font: 500 16px var(--sans); color: var(--muted); margin-left: 4px; }
+.share { font-size: 13px; color: var(--ink-2); margin: 0 0 12px; font-variant-numeric: tabular-nums; }
+.stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); margin-bottom: 10px; }
+.stack span { display: block; height: 100%; }
+.classes { display: grid; gap: 8px; margin-bottom: 10px; }
+.classes div { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.classes i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.classes b { display: block; color: var(--ink); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.excluded { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+.chart-title { font-size: 13px; color: var(--ink-2); margin: 6px 0 4px; }
+.card svg { width: 100%; height: auto; display: block; }
+.card svg text { font-family: var(--sans); }
+.bar-g { cursor: pointer; }
+.bar-g:hover .bar-hit { fill: rgba(30, 51, 38, 0.05); }
+.fine { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.cmp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.cmp-row p { margin: 0; font-size: 12px; color: var(--muted); }
+.cmp-row b { display: block; font: 600 24px/1.1 var(--serif); color: var(--ink); margin-top: 2px; font-variant-numeric: lining-nums tabular-nums; }
+
+/* ---------- timeline ---------- */
+.timeline { position: fixed; left: var(--story-w); right: 28px; bottom: 20px; }
+.track { position: relative; height: 34px; }
+.bands, .steps { position: absolute; left: 10px; right: 10px; top: 9px; height: 16px; pointer-events: none; }
+.bands div { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.bands .rabi { background: var(--rabi); } .bands .kharif { background: var(--kharif); }
+.steps i { position: absolute; top: 6px; width: 1px; height: 4px; background: var(--line-2); }
+#slider { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 34px; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+#slider::-webkit-slider-runnable-track { height: 2px; background: var(--line-2); border-radius: 1px; }
+#slider::-moz-range-track { height: 2px; background: var(--line-2); border-radius: 1px; }
+#slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); margin-top: -9px; }
+#slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); }
+.track.cue::after { content: ""; position: absolute; left: 0; top: 7px; width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--accent); animation: pulse 1.8s ease-out infinite; pointer-events: none; }
+@keyframes pulse { from { transform: scale(1); opacity: 0.8; } to { transform: scale(2.1); opacity: 0; } }
+.cuetext { position: absolute; left: 26px; top: -18px; font-size: 12px; color: var(--accent); white-space: nowrap; }
+.scrubtip { position: absolute; bottom: 36px; left: 0; transform: translateX(-50%); background: var(--ink); color: var(--paper);
+  font-size: 12px; padding: 4px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; }
+.timeline:hover .scrubtip, .timeline.scrubbing .scrubtip { opacity: 1; }
+.ticks-row { position: relative; height: 18px; margin: 0 10px; font-size: 12px; color: var(--muted); }
+.ticks-row span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ticks-row span::before { content: ""; position: absolute; left: 50%; top: -6px; width: 1px; height: 4px; background: var(--line-2); }
+.season-key { margin: 2px 10px 0; font-size: 12px; color: var(--muted); display: flex; gap: 14px; }
+.season-key i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+
+.cmpbar { position: fixed; left: var(--story-w); right: 28px; bottom: 20px; display: grid; grid-template-columns: 1fr 1fr auto; gap: 18px; align-items: end; }
+.cmpbar label { font-size: 12px; color: var(--muted); display: block; }
+.cmpbar label b { color: var(--ink); font-weight: 600; font-size: 13px; margin-left: 4px; }
+.cmpbar input { width: 100%; accent-color: var(--ink); height: 28px; }
+
+.empty { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; }
+.empty p { max-width: 46ch; color: var(--muted); line-height: 1.6; }
+.empty strong { display: block; font: 600 22px var(--serif); color: var(--ink); margin-bottom: 6px; }
+
+body.clean .toolbar, body.clean .presets, body.clean .help { display: none; }
+body.no-timeline .timeline, body.no-timeline .cmpbar { display: none; }
+body.no-cover .card { display: none; }
+[hidden] { display: none !important; }
+
+/* ---------- medium screens ---------- */
+@media (max-width: 1440px), (max-height: 820px) {
+  :root { --story-w: 320px; --card-w: 316px; }
+  .story { padding: 28px 18px 104px 32px; }
+  h1 { font-size: 27px; } .date { font-size: 44px; margin-bottom: 12px; } .sub { margin-bottom: 18px; }
+  .caption { font-size: 18px; } .big { font-size: 32px; }
+  .card { top: 108px; padding: 14px 16px 12px; max-height: calc(100% - 220px); }
+}
+/* ---------- narrow screens: stack ---------- */
+@media (max-width: 900px) {
+  :root { --story-w: 0px; }
+  .story { position: fixed; top: 0; left: 0; right: 0; bottom: auto; width: auto; max-height: 30vh; padding: 12px 16px 4px; overflow: hidden; }
+  h1 { font-size: 20px; max-width: none; margin-bottom: 4px; } .sub, .legend, .seeing, .callabel, .where, .method { display: none; }
+  .date { font-size: 30px; margin: 2px 0 2px; } .caption { font-size: 15px; margin: 0; min-height: 0; }
+  .timeline, .cmpbar { left: 8px; right: 8px; bottom: 8px; }
+  .season-key, .cuetext { display: none; }
+  .ticks-row span:nth-child(even) { display: none; }
+  .toolbar { top: auto; bottom: 74px; left: 8px; right: 8px; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
+  .toolbar::-webkit-scrollbar { display: none; }
+  .toolbar > * { flex: 0 0 auto; }
+  .relief { display: none; }
+  .presets { top: auto; bottom: 120px; left: 8px; right: 8px; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
+  .help { top: auto; bottom: 160px; right: 8px; left: 8px; width: auto; }
+  .card { top: auto; bottom: 158px; right: 8px; left: 8px; width: auto; max-height: 24vh; padding: 12px 14px; }
+  .card .chart-title, .card #months, .card .classes, .card .stack, .card .excluded { display: none; }
+  .big { font-size: 28px; }
+  .mapcues { left: 10px; bottom: auto; top: 30vh; }
+  .cmpbar { grid-template-columns: 1fr 1fr; } .cmpbar button { grid-column: span 2; }
+}
+body.comparing .callabel { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .track.cue::after { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="3D map of vegetation greenness across Pakistan"></canvas>
+<div id="labels" aria-hidden="true"></div>
+<div id="swipe" hidden><span></span></div>
+<div class="swipelab" id="swipeL" hidden></div><div class="swipelab" id="swipeR" hidden></div>
+<div id="tip" hidden></div>
+
+<aside class="story">
+  <p class="where" id="where">&nbsp;</p>
+  <h1 contenteditable="true" spellcheck="false">A country that breathes twice a year</h1>
+  <p class="sub" id="sub" contenteditable="true" spellcheck="false">&nbsp;</p>
+  <p class="month" id="month">&nbsp;</p>
+  <p class="date" id="date">&nbsp;</p>
+  <p class="callabel">Typical crop calendar</p>
+  <p class="caption" id="caption">&nbsp;</p>
+  <p class="seeing" id="seeing">&nbsp;</p>
+  <div class="legend">
+    <p class="label">Greenness (NDVI)</p>
+    <div class="bar"></div>
+    <div class="ticks"><span>≤0</span><span>0.2</span><span>0.4</span><span>0.6</span><span>≥0.8</span></div>
+  </div>
+  <details class="method" id="method">
+    <summary>Data and method<small id="srcShort"></small></summary>
+    <p id="note"></p>
+    <p id="foot"></p>
+    <p id="provSrc"></p>
+    <p class="credit" id="credit" contenteditable="true" spellcheck="false">&nbsp;</p>
+  </details>
+</aside>
+
+<section class="card" id="cover" aria-label="Statistics">
+  <div class="card-head"><h2 id="headTitle">&nbsp;</h2><button class="link" id="back" type="button" hidden>← Back to Pakistan</button></div>
+  <div id="natView">
+    <p class="big" id="vegKm">&nbsp;</p>
+    <p class="share" id="vegShare">&nbsp;</p>
+    <div class="stack" id="stack"></div>
+    <div class="classes" id="classes"></div>
+    <p class="excluded" id="excluded"></p>
+    <p class="chart-title">Average of composites starting in each month. Click a bar to jump.</p>
+    <svg id="months" viewBox="0 0 320 136" role="img" aria-label="Average area by month"></svg>
+  </div>
+  <div id="provView" hidden>
+    <p class="big" id="provMean">&nbsp;</p>
+    <p class="share" id="provShare">&nbsp;</p>
+    <p class="chart-title">Mean NDVI through the year. Click to jump.</p>
+    <svg id="series" viewBox="0 0 320 140" role="img" aria-label="Province mean NDVI through the year"></svg>
+    <p class="fine">Province values come from the ~3 km display grid, with cloud gaps filled. National figures use observed 232 m pixels only.</p>
+  </div>
+  <div id="cmpView" hidden>
+    <div class="cmp-row"><p>Left<br><span id="cmpLd"></span><b id="cmpLv"></b></p><p>Right<br><span id="cmpRd"></span><b id="cmpRv"></b></p></div>
+    <p class="share" id="cmpDiff"></p>
+    <p class="fine">Area with NDVI at or above the headline threshold, observed pixels only. Each side has its own cloud-masked coverage.</p>
+  </div>
+</section>
+
+<div class="toolbar" id="toolbar" role="toolbar" aria-label="Map controls">
+  <button class="tb icon" id="play" type="button" aria-label="Play"><svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></button>
+  <div class="seg" id="speed" role="group" aria-label="Playback speed"><button type="button" data-v="2.5" class="on">1×</button><button type="button" data-v="5">2×</button><button type="button" data-v="10">4×</button></div>
+  <div class="seg" id="hmode" role="group" aria-label="Height"><button type="button" data-v="elev">Terrain</button><button type="button" data-v="ndvi">Greenness</button><button type="button" data-v="flat">Flat</button></div>
+  <label class="tb relief">Relief <input type="range" id="relief" min="0.1" max="2.5" step="0.05" value="0.8"></label>
+  <button class="tb" id="cmpBtn" type="button" aria-pressed="false">Compare</button>
+  <button class="tb icon" id="reset" type="button" aria-label="Reset view"><svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  <button class="tb icon" id="helpBtn" type="button" aria-label="Shortcuts" aria-expanded="false">?</button>
+</div>
+<div class="presets" id="presets" role="group" aria-label="Camera presets">
+  <button type="button" data-p="overview" class="on">Overview</button><button type="button" data-p="indus">Indus plain</button><button type="button" data-p="north">Northern mountains</button><button type="button" data-p="baloch">Balochistan</button>
+</div>
+<div class="help" id="help" hidden>
+  <h3>Shortcuts</h3>
+  <dl>
+    <dt>Space</dt><dd>Play or pause</dd>
+    <dt>← →</dt><dd>Previous or next composite</dd>
+    <dt>1–4</dt><dd>Camera presets</dd>
+    <dt>C</dt><dd>Compare two dates</dd>
+    <dt>H</dt><dd>Hide controls</dd>
+    <dt>T</dt><dd>Hide timeline</dd>
+    <dt>V</dt><dd>Hide stats card</dd>
+    <dt>Esc</dt><dd>Back to Pakistan, close panels</dd>
+    <dt>Mouse</dt><dd>Drag to rotate, right-drag to pan, scroll to zoom, click a province to zoom in</dd>
+  </dl>
+  <p class="fine">Title, subtitle and credit are editable: click and type.</p>
+</div>
+
+<div class="mapcues" id="mapcues" aria-hidden="true">
+  <svg class="compass" viewBox="-17 -17 34 34"><circle r="15.5" fill="var(--paper)" stroke="var(--line-2)"/><g id="needle"><path d="M0-11 4 2H-4z" fill="var(--ink)"/><path d="M0 11 4 2H-4z" fill="var(--line-2)"/><text y="-12.5" font-size="7" text-anchor="middle" fill="var(--ink)" font-family="sans-serif" font-weight="600" dy="-0.5">N</text></g></svg>
+  <div class="scale"><i id="scaleBar"></i><span id="scaleLab"></span> <span style="opacity:.8">(approx., map centre)</span></div>
+</div>
+
+<div class="timeline" id="timeline">
+  <div class="track cue" id="track">
+    <div class="bands" id="bands"></div>
+    <div class="steps" id="steps"></div>
+    <input type="range" id="slider" min="0" max="1" step="0.001" value="0" aria-label="Composite date">
+    <div class="scrubtip" id="scrubTip"></div>
+    <span class="cuetext" id="cueText">Drag to move through the year</span>
+  </div>
+  <div class="ticks-row" id="ticks"></div>
+  <div class="season-key"><span><i style="background:var(--rabi)"></i>Rabi season (approx.)</span><span><i style="background:var(--kharif)"></i>Kharif season (approx.)</span></div>
+</div>
+<div class="cmpbar" id="cmpbar" hidden>
+  <label>Left <b id="cmpALab"></b><input type="range" id="cmpA" min="0" step="1" value="0"></label>
+  <label>Right <b id="cmpBLab"></b><input type="range" id="cmpB" min="0" step="1" value="0"></label>
+  <button class="tb" id="cmpDone" type="button">Done</button>
+</div>
+
+<div class="empty" id="empty"><p><strong>No map data in this file</strong>Run <code>python build_map.py</code> in the project folder, then open <code>pakistan_ndvi_map.html</code>.</p></div>
+
+<!--__LIBS__-->
+<script>window.NDVI_DATA = /*__NDVI_DATA__*/null;</script>
+<script>
+(() => {
+  const J = window.NDVI_DATA;
+  const $ = id => document.getElementById(id);
+  if (!J || typeof THREE === "undefined") {
+    const e = $("empty"); e.style.display = "grid";
+    if (J) e.innerHTML = "<p><strong>The 3D library didn't load</strong>Re-run build_map.py with internet on, so the map library is embedded in the file.</p>";
+    return;
+  }
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const SEASON = ["Rabi wheat growing", "Rabi wheat near peak green", "Rabi wheat near peak green", "Wheat harvest",
+    "Pre-monsoon heat, fields mostly bare", "Kharif sowing: cotton, rice", "Monsoon onset", "Kharif crops and monsoon growth",
+    "Kharif crops near peak", "Kharif harvest, rabi sowing", "Rabi sowing", "Young wheat emerging"];
+  const STOPS = ["#efe6d1", "#e3d5b1", "#d3c999", "#b8c483", "#93b56d", "#6fa05a", "#558a4d", "#447546"];
+  // [name, lat, lon, priority, class] — well-known coordinates, used only as reference labels
+  const PLACES = [["Karachi", 24.86, 67.01, 1], ["Lahore", 31.55, 74.34, 1], ["Islamabad", 33.69, 73.05, 1],
+    ["Quetta", 30.18, 66.98, 1], ["Peshawar", 34.01, 71.58, 1], ["Indus River", 27.3, 68.55, 2, "river"],
+    ["Multan", 30.20, 71.47, 3], ["Gilgit", 35.92, 74.31, 3]];
+  const CL_ALL = [["lower", "Lower", "0.2–0.4", 0.2], ["medium", "Medium", "0.4–0.6", 0.4], ["higher", "Higher", "0.6+", 0.6]];
+
+  // ---------- decode ----------
+  const b64 = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  const w = J.w, h = J.h, n = J.dates.length, cells = w * h, NMAX = J.nmax || 0.8;
+  const frames = b64(J.data);
+  const dates = J.dates.map(s => new Date(s + "T00:00:00Z"));
+  const ends = (J.date_ends || []).map(s => s ? new Date(s + "T00:00:00Z") : null);
+  const monthly = J.cadence === "monthly";
+  const stats = J.stats || null, SM = J.stats_meta || {};
+  const HMIN = J.headline_min ?? 0.2;
+  const CL = CL_ALL.filter(c => c[3] >= HMIN - 1e-9);
+  const SENSOR = { T: "Terra", A: "Aqua", S: "Sentinel-2" };
+  const [W0, S0, E0, N0] = J.bounds;
+  const res = (E0 - W0) / w;
+  const fmt = v => Math.round(v).toLocaleString("en-US");
+  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const valid = new Uint8Array(cells);
+  for (let k = 0; k < n; k++) { const o = k * cells; for (let i = 0; i < cells; i++) if (frames[o + i]) valid[i] = 1; }
+  const cosLat = new Float32Array(h);
+  for (let iy = 0; iy < h; iy++) cosLat[iy] = Math.cos((N0 - (iy + 0.5) * res) * Math.PI / 180);
+
+  // elevation, lightly smoothed (3x3) for display to reduce speckle on bare land
+  let dem = null;
+  if (J.dem && J.dem_max > 0) {
+    const raw = new Uint16Array(b64(J.dem).buffer);
+    dem = new Float32Array(cells);
+    for (let iy = 0; iy < h; iy++) for (let ix = 0; ix < w; ix++) {
+      const i = iy * w + ix; if (!valid[i]) continue;
+      let s = 0, c = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = ix + dx, y = iy + dy; if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const j = y * w + x; if (valid[j]) { s += raw[j]; c++; }
+      }
+      dem[i] = s / c / J.dem_max;
+    }
+  }
+
+  // provinces on the display grid
+  let pid = null, pnames = [];
+  if (J.provinces && J.provinces.grid) { const g = b64(J.provinces.grid); if (g.length === cells) { pid = g; pnames = J.provinces.names || []; } }
+  const P = pnames.length;
+  const edge = new Uint8Array(cells);
+  const pbox = new Int32Array((P + 1) * 4);
+  for (let p = 0; p <= P; p++) { pbox[p * 4] = w; pbox[p * 4 + 1] = -1; pbox[p * 4 + 2] = h; pbox[p * 4 + 3] = -1; }
+  const pArea = new Float64Array(P + 1), pSum = new Float32Array((P + 1) * n), pGreen = new Float32Array((P + 1) * n);
+  const nSum = new Float32Array(n), nGreen = new Float32Array(n);
+  let nArea = 0;
+  for (let iy = 0; iy < h; iy++) for (let ix = 0; ix < w; ix++) {
+    const i = iy * w + ix; if (!valid[i]) continue;
+    const p = pid ? pid[i] : 0, cw = cosLat[iy];
+    pArea[p] += cw; nArea += cw;
+    if (p) { const b = p * 4; if (ix < pbox[b]) pbox[b] = ix; if (ix > pbox[b + 1]) pbox[b + 1] = ix; if (iy < pbox[b + 2]) pbox[b + 2] = iy; if (iy > pbox[b + 3]) pbox[b + 3] = iy; }
+    if (pid && ((ix + 1 < w && valid[i + 1] && pid[i + 1] !== p) || (iy + 1 < h && valid[i + w] && pid[i + w] !== p))) edge[i] = 1;
+  }
+  for (let k = 0; k < n; k++) {
+    const o = k * cells, po = k * (P + 1);
+    for (let iy = 0; iy < h; iy++) {
+      const cw = cosLat[iy];
+      for (let ix = 0; ix < w; ix++) {
+        const i = iy * w + ix; if (!valid[i]) continue;
+        const q = frames[o + i], v = q ? (q - 1) / 254 * NMAX : 0, p = pid ? pid[i] : 0;
+        pSum[po + p] += v * cw; nSum[k] += v * cw;
+        if (v >= HMIN) { pGreen[po + p] += cw; nGreen[k] += cw; }
+      }
+    }
+  }
+  const pbIdx = name => pnames.findIndex(s => s && s.toLowerCase().includes(name)) + 1;
+
+  // ---------- static texts ----------
+  const a = dates[0], z = dates[n - 1];
+  $("where").textContent = `Pakistan, ${MON[a.getUTCMonth()]} ${a.getUTCFullYear()} to ${MON[z.getUTCMonth()]} ${z.getUTCFullYear()}`;
+  $("sub").textContent = J.source === "S2" ? "Vegetation greenness (NDVI) from Sentinel-2, monthly composites"
+    : "Vegetation greenness (NDVI) from MODIS Terra and Aqua 16-day composites, interleaved about every 8 days";
+  $("credit").textContent = (J.source === "S2" ? "Data: Copernicus Sentinel-2 (ESA)" : "Data: MODIS Terra/Aqua NDVI, Collection 6.1 (NASA)")
+    + (dem ? ", Copernicus DEM GLO-30 surface model" : "") + " via Google Earth Engine. Style inspired by Milos Popovic. Map: Smart City Lab, NCAI-NEDUET.";
+  $("srcShort").textContent = (J.source === "S2" ? "Sentinel-2" : "NASA MODIS") + (dem ? ", Copernicus DEM" : "") + ". Smart City Lab, NCAI-NEDUET";
+  $("headTitle").textContent = `Area with NDVI ≥ ${HMIN}`;
+  $("provSrc").textContent = pid ? `Province outlines: ${J.provinces.source}. Places outside the listed provinces show as such.` : "Province outlines are not in this file, so hover shows nearest places only and click-to-zoom is off.";
+
+  // ---------- three ----------
+  const LUT = new Float32Array(256 * 3);
+  { const cs = STOPS.map(c => new THREE.Color(c));
+    for (let i = 0; i < 256; i++) { const t = i / 255 * (cs.length - 1), k = Math.min(Math.floor(t), cs.length - 2);
+      const c = cs[k].clone().lerp(cs[k + 1], t - k); LUT[i * 3] = c.r; LUT[i * 3 + 1] = c.g; LUT[i * 3 + 2] = c.b; } }
+  const BGC = new THREE.Color("#f6f3ea");
+  const canvas = $("scene");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(BGC, 1);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 200);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.46; controls.minDistance = 1; controls.maxDistance = 45;
+  scene.add(new THREE.HemisphereLight(0xfffdf7, 0xe8e2d2, 0.8));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 0.34);
+  sun.position.set(-7, 12, -4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 });
+  sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03; scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.ShadowMaterial({ opacity: 0.05 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.002; ground.receiveShadow = true; scene.add(ground);
+
+  const worldW = 10, worldH = worldW * (N0 - S0) / ((E0 - W0) * Math.cos((S0 + N0) / 2 * Math.PI / 180));
+  const pw = worldW * (w - 1) / w, ph = worldH * (h - 1) / h;
+  const kmPerUnit = (E0 - W0) * 111.32 * Math.cos((S0 + N0) / 2 * Math.PI / 180) / worldW;
+  const idxArr = [];
+  for (let iy = 0; iy < h - 1; iy++) for (let ix = 0; ix < w - 1; ix++) {
+    const p0 = iy * w + ix, q0 = p0 + w, r0 = q0 + 1, s0 = p0 + 1;
+    if (valid[p0] && valid[q0] && valid[r0] && valid[s0]) idxArr.push(p0, q0, s0, q0, r0, s0);
+  }
+  const indexAttr = new THREE.BufferAttribute(new Uint32Array(idxArr), 1);
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+  function makeMesh() {
+    const g = new THREE.PlaneGeometry(pw, ph, w - 1, h - 1);
+    g.setIndex(indexAttr);
+    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(cells * 3), 3));
+    g.userData.hDirty = true;
+    const m = new THREE.Mesh(g, material);
+    m.rotation.x = -Math.PI / 2; m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    return m;
+  }
+  const meshA = makeMesh(); let meshB = null;
+  const lonX = lon => -pw / 2 + ((lon - W0) / res - 0.5) * pw / (w - 1);
+  const latZ = lat => -ph / 2 + ((N0 - lat) / res - 0.5) * ph / (h - 1);
+
+  // ---------- state ----------
+  let pos = 0, relief = 0.8, mode = dem ? "elev" : "ndvi", playing = false, speed = 2.5, selP = 0;
+  let compare = false, cA = 0, cB = 0, split = 0.5;
+  let frameDirty = true, needsRender = true, lastK = -1, hmax = 0;
+  const anim = { active: false, from: 0, to: 0, t0: 0, dur: 650 };
+  const fly = { active: false, t0: 0, dur: 1000, fT: new THREE.Vector3(), tT: new THREE.Vector3(), fP: new THREE.Vector3(), tP: new THREE.Vector3() };
+  const BGr = BGC.r, BGg = BGC.g, BGb = BGC.b;
+
+  function zmaxNow() { return (mode === "elev" ? 0.85 : mode === "ndvi" ? 0.7 : 0) * relief; }
+  function writeFrame(g, p) {
+    const k0 = Math.floor(p), k1 = Math.min(k0 + 1, n - 1), t = p - k0, o0 = k0 * cells, o1 = k1 * cells;
+    const Pp = g.attributes.position.array, C = g.attributes.color.array;
+    const zmax = zmaxNow(), writeH = mode === "ndvi" || g.userData.hDirty;
+    for (let i = 0; i < cells; i++) {
+      if (!valid[i]) continue;
+      const q0 = frames[o0 + i], q1 = frames[o1 + i];
+      const v0 = q0 ? (q0 - 1) / 254 : 0, v1 = q1 ? (q1 - 1) / 254 : 0, v = v0 + (v1 - v0) * t;
+      const li = ((v * 255 + 0.5) | 0) * 3;
+      let r = LUT[li], gg = LUT[li + 1], b = LUT[li + 2];
+      if (edge[i]) { r *= 0.88; gg *= 0.88; b *= 0.88; }
+      if (selP && pid[i] !== selP) { r = r * 0.4 + BGr * 0.6; gg = gg * 0.4 + BGg * 0.6; b = b * 0.4 + BGb * 0.6; }
+      const c3 = i * 3; C[c3] = r; C[c3 + 1] = gg; C[c3 + 2] = b;
+      if (writeH) Pp[c3 + 2] = mode === "ndvi" ? v * zmax : mode === "elev" ? dem[i] * zmax : 0;
+    }
+    if (writeH) { g.attributes.position.needsUpdate = true; g.computeVertexNormals(); g.userData.hDirty = false; }
+    g.attributes.color.needsUpdate = true;
+    hmax = zmax;
+  }
+  function markHeights() { meshA.geometry.userData.hDirty = true; if (meshB) meshB.geometry.userData.hDirty = true; frameDirty = true; }
+
+  // ---------- layout + camera ----------
+  function insets() {
+    const W = innerWidth, H = innerHeight;
+    if (W <= 900) {
+      const top = document.querySelector(".story").offsetHeight + 8;
+      const ct = document.body.classList.contains("no-cover") ? H - 160 : $("cover").getBoundingClientRect().top;
+      return { left: 0, right: 0, top, bottom: H - ct + 8 };
+    }
+    const storyW = document.querySelector(".story").offsetWidth;
+    const card = document.body.classList.contains("no-cover") ? 0 : $("cover").offsetWidth + 36;
+    return { left: storyW, right: card, top: 96, bottom: 132 };
+  }
+  function applyOffset() {
+    const W = innerWidth, H = innerHeight, m = insets();
+    camera.aspect = W / H;
+    camera.setViewOffset(W, H, -(m.left - m.right) / 2, -(m.top - m.bottom) / 2, W, H);
+    camera.updateProjectionMatrix();
+  }
+  function viewFor(x0, x1, z0, z1, polar, outT, outP, pad = 1.2) {
+    const W = innerWidth, H = innerHeight, m = insets();
+    const tv = Math.tan(camera.fov * Math.PI / 360), th = tv * W / H;
+    const fx = Math.max(0.25, (W - m.left - m.right) / W), fy = Math.max(0.25, (H - m.top - m.bottom) / H);
+    const bw = x1 - x0, bd = z1 - z0, he = hmax;
+    const d = Math.max((bw / 2) / (th * fx), ((bd * Math.cos(polar) + he * Math.sin(polar)) / 2) / (tv * fy)) * pad;
+    outT.set((x0 + x1) / 2, he * 0.25, (z0 + z1) / 2);
+    outP.set(outT.x, outT.y + d * Math.cos(polar), outT.z + d * Math.sin(polar));
+  }
+  function flyTo(lonA, latA, lonB, latB, polar, pad) {
+    viewFor(lonX(lonA), lonX(lonB), latZ(latB), latZ(latA), polar, fly.tT, fly.tP, pad);
+    if (reduceMotion) { controls.target.copy(fly.tT); camera.position.copy(fly.tP); controls.update(); needsRender = true; return; }
+    fly.fT.copy(controls.target); fly.fP.copy(camera.position); fly.t0 = performance.now(); fly.active = true;
+  }
+  const PRESETS = {
+    overview: () => [W0, S0, E0, N0, 0.6],
+    indus: () => [66.6, 23.8, 74.9, 33.0, 0.72],
+    north: () => [71.0, 34.0, 77.9, N0, 0.68],
+    baloch: () => { const p = pbIdx("baloch"); return p ? [...boxLL(p), 0.66] : [60.9, 24.8, 70.3, 32.2, 0.66]; },
+  };
+  function boxLL(p) {
+    const b = p * 4;
+    return [W0 + pbox[b] * res, N0 - (pbox[b + 3] + 1) * res, W0 + (pbox[b + 1] + 1) * res, N0 - pbox[b + 2] * res];
+  }
+  function preset(name) {
+    const [x0, y0, x1, y1, pol] = PRESETS[name]();
+    document.querySelectorAll("#presets button").forEach(b => b.classList.toggle("on", b.dataset.p === name));
+    flyTo(x0, y0, x1, y1, pol);
+  }
+
+  // ---------- labels, compass, scale ----------
+  const labelBox = $("labels");
+  const places = PLACES.map(([name, lat, lon, pri, cls]) => {
+    const el = document.createElement("div"); el.className = "place" + (cls ? " " + cls : ""); el.textContent = name; labelBox.appendChild(el);
+    const ix = Math.round((lon - W0) / res - 0.5), iy = Math.round((N0 - lat) / res - 0.5);
+    return { name, lat, lon, pri, el, x: lonX(lon), z: latZ(lat), cell: iy * w + ix, wpx: 0, shown: false };
+  }).sort((p, q) => p.pri - q.pri);
+  const placed = new Float32Array(places.length * 4);
+  const V = new THREE.Vector3(), V2 = new THREE.Vector3();
+  function surfaceY(i, g) { return (i >= 0 && i < cells && valid[i]) ? g.attributes.position.array[i * 3 + 2] : 0; }
+  function updateLabels() {
+    const W = innerWidth, H = innerHeight, m = insets(); let np = 0;
+    for (const p of places) {
+      V.set(p.x, surfaceY(p.cell, meshA.geometry) + 0.02, p.z).project(camera);
+      let ok = V.z < 1 && V.x > -1 && V.x < 1 && V.y > -1 && V.y < 1;
+      const sx = (V.x * 0.5 + 0.5) * W, sy = (-V.y * 0.5 + 0.5) * H;
+      if (!p.wpx) p.wpx = p.el.offsetWidth || p.name.length * 7 + 10;
+      const x0 = sx - 4, y0 = sy - 9, x1 = sx + p.wpx, y1 = sy + 9;
+      if (ok && W > 900 && (x0 < m.left || x1 > W - m.right)) ok = false;
+      for (let j = 0; ok && j < np; j++) {
+        const o = j * 4; if (x0 < placed[o + 2] && x1 > placed[o] && y0 < placed[o + 3] && y1 > placed[o + 1]) ok = false;
+      }
+      if (ok) { const o = np * 4; placed[o] = x0; placed[o + 1] = y0; placed[o + 2] = x1; placed[o + 3] = y1; np++;
+        p.el.style.transform = `translate(${sx - 4}px, ${sy - 9}px)`; }
+      if (ok !== p.shown) { p.el.style.display = ok ? "block" : "none"; p.shown = ok; }
+    }
+  }
+  const needle = $("needle"), scaleBar = $("scaleBar"), scaleLab = $("scaleLab");
+  const NICE = [10, 20, 25, 50, 100, 200, 250, 500, 1000];
+  let lastScale = -1;
+  function updateCues() {
+    V.copy(controls.target).project(camera); V2.copy(controls.target); V2.z -= 1; V2.project(camera);
+    needle.setAttribute("transform", `rotate(${(Math.atan2(V2.x - V.x, (V2.y - V.y) * innerHeight / innerWidth) * 180 / Math.PI).toFixed(1)})`);
+    V2.copy(controls.target); V2.x += 1; V2.project(camera);
+    const pxPerUnit = Math.hypot((V2.x - V.x) * innerWidth / 2, (V2.y - V.y) * innerHeight / 2);
+    const kmPerPx = kmPerUnit / Math.max(pxPerUnit, 1e-6);
+    let L = NICE[0]; for (const c of NICE) if (c / kmPerPx <= 130) L = c;
+    const px = Math.round(L / kmPerPx);
+    if (px !== lastScale) { scaleBar.style.width = px + "px"; scaleLab.textContent = `${L} km`; lastScale = px; }
+  }
+
+  // ---------- timeline ----------
+  const slider = $("slider"), track = $("track"), tl = $("timeline"), scrubTip = $("scrubTip");
+  slider.max = n - 1;
+  function dateToPos(d) {
+    if (d <= dates[0]) return 0; if (d >= dates[n - 1]) return n - 1;
+    let k = 0; while (k < n - 2 && dates[k + 1] <= d) k++;
+    return k + (d - dates[k]) / (dates[k + 1] - dates[k]);
+  }
+  {
+    const pct = p => (p / (n - 1) * 100).toFixed(3) + "%";
+    let bands = "";
+    for (let y = a.getUTCFullYear() - 1; y <= z.getUTCFullYear(); y++) {
+      const segs = [["rabi", Date.UTC(y, 10, 1), Date.UTC(y + 1, 4, 1)], ["kharif", Date.UTC(y + 1, 4, 1), Date.UTC(y + 1, 10, 1)]];
+      for (const [cls, s, e] of segs) {
+        const p0 = dateToPos(new Date(s)), p1 = dateToPos(new Date(e));
+        if (p1 - p0 > 0.01) bands += `<div class="${cls}" style="left:${pct(p0)};width:calc(${pct(p1)} - ${pct(p0)})"></div>`;
+      }
+    }
+    $("bands").innerHTML = bands;
+    $("steps").innerHTML = dates.map((_, k) => `<i style="left:${pct(k)}"></i>`).join("");
+    let ticks = ""; let d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 1));
+    while (d <= z) { const m = d.getUTCMonth();
+      ticks += `<span style="left:${pct(dateToPos(d))}">${MON[m]}${m === 0 ? " " + d.getUTCFullYear() : ""}</span>`;
+      d = new Date(Date.UTC(d.getUTCFullYear(), m + 1, 1)); }
+    $("ticks").innerHTML = ticks;
+  }
+  function periodText(k) {
+    const s = dates[k], e = ends[k] ? new Date(ends[k].getTime() - 864e5) : null;
+    if (monthly) return `${MONL[s.getUTCMonth()]} ${s.getUTCFullYear()}`;
+    if (!e) return `from ${s.getUTCDate()} ${MON[s.getUTCMonth()]} ${s.getUTCFullYear()}`;
+    return s.getUTCMonth() === e.getUTCMonth() ? `${s.getUTCDate()}–${e.getUTCDate()} ${MON[e.getUTCMonth()]} ${e.getUTCFullYear()}`
+      : `${s.getUTCDate()} ${MON[s.getUTCMonth()]} – ${e.getUTCDate()} ${MON[e.getUTCMonth()]} ${e.getUTCFullYear()}`;
+  }
+  const periodShort = k => periodText(k).replace(/ \d{4}$/, "");
+  function placeScrubTip() {
+    const tw = slider.offsetWidth - 20;
+    scrubTip.style.left = (10 + pos / (n - 1) * tw) + "px";
+  }
+  function interacted() { if (track.classList.contains("cue")) { track.classList.remove("cue"); $("cueText").remove(); } }
+
+  // ---------- stats card ----------
+  let months = [], monthFirst = [];
+  const green = r => CL.reduce((s, c) => s + r[c[0]], 0);
+  if (stats) {
+    $("stack").innerHTML = CL.map(([c]) => `<span style="background:var(--c-${c})"></span>`).join("");
+    $("classes").style.gridTemplateColumns = `repeat(${CL.length}, 1fr)`;
+    $("classes").innerHTML = CL.map(([c, l, r]) => `<div><i style="background:var(--c-${c})"></i>${l} greenness<br>NDVI ${r}<b id="c-${c}">0</b></div>`).join("");
+    const map = new Map();
+    dates.forEach((d, k) => {
+      const key = d.getUTCFullYear() * 12 + d.getUTCMonth();
+      if (!map.has(key)) { map.set(key, { y: d.getUTCFullYear(), m: d.getUTCMonth(), v: {}, c: 0, k0: k }); for (const [c] of CL_ALL) map.get(key).v[c] = 0; }
+      const o = map.get(key); for (const [c] of CL_ALL) o.v[c] += stats[k][c]; o.c++;
+    });
+    months = [...map.values()].map(o => { for (const [c] of CL_ALL) o.v[c] /= o.c; o.partial = o.c < 2; return o; });
+    const maxV = Math.max(...months.map(o => green(o.v))), bw = 320 / months.length, H = 84;
+    let svg = "";
+    months.forEach((o, j) => {
+      const x = j * bw + bw * 0.14, bwi = bw * 0.72; let y = H;
+      svg += `<g class="bar-g" data-j="${j}"><rect class="bar-hit" x="${(j * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H + 52}" fill="transparent"/>`;
+      for (const [c] of CL) { const hh = o.v[c] / maxV * (H - 6); y -= hh;
+        svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwi.toFixed(1)}" height="${hh.toFixed(1)}" fill="var(--c-${c})"${o.partial ? ' fill-opacity="0.45" stroke="var(--muted)" stroke-dasharray="2 2" stroke-width="0.8"' : ""}/>`; }
+      const lx = (x + bwi / 2).toFixed(1), ly = H + (j % 2 ? 31 : 16);
+      svg += `<text class="ml" x="${lx}" y="${ly}" font-size="13" text-anchor="middle" fill="var(--muted)">${MON[o.m]}</text>`;
+      if (j === 0 || o.m === 0) svg += `<text x="${(j * bw + 1).toFixed(1)}" y="${H + 47}" font-size="12" text-anchor="start" fill="var(--muted)">${o.y}</text>`;
+      svg += "</g>";
+    });
+    $("months").innerHTML = svg;
+    $("months").addEventListener("click", e => { const g = e.target.closest(".bar-g"); if (g) { interacted(); goTo(months[+g.dataset.j].k0); } });
+    const full = months.filter(o => !o.partial), peak = full.reduce((b, o) => green(o.v) > green(b.v) ? o : b, full[0]);
+    const part = months.filter(o => o.partial).map(o => `${MON[o.m]} ${o.y}`).join(", ");
+    $("foot").textContent = `Statistics: area with NDVI ≥ ${HMIN} from observed pixels only (${SM.grid || "analysis grid"}); cloud- and snow-masked pixels are excluded, so each share is of that composite's observed area. QA: ${J.qa_policy || SM.qa_policy || "see source"}. Monthly bars average the composites that start in each month; largest month: ${MONL[peak.m]} ${peak.y}.`
+      + (part ? ` Dashed bars are partial months (one composite): ${part}.` : "") + ` Mapped boundary: ${fmt(SM.boundary_area_km2)} km².`;
+  } else {
+    document.body.classList.add("no-cover");
+    $("foot").textContent = "Statistics are not in this file. Run build_map.py to add them.";
+  }
+  $("note").textContent = "The map is resampled to about 3 km, and cloud gaps are filled so the animation stays continuous. Transitions blend neighbouring composites. Height in terrain mode is a surface model (it includes trees and buildings), vertically exaggerated.";
+
+  const numTw = { cur: 0, target: 0, el: $("vegKm"), last: -1 };
+  function setStats(k) {
+    if (!stats) return;
+    const r = stats[k], g = green(r), obs = r.observed || 1;
+    numTw.target = g; if (reduceMotion || lastK < 0) numTw.cur = g;
+    $("vegShare").textContent = `${(g / obs * 100).toFixed(1)}% of observed area. Observed: ${(obs / SM.boundary_area_km2 * 100).toFixed(1)}% of the boundary.`;
+    const sp = $("stack").children;
+    CL.forEach(([c], idx) => { sp[idx].style.width = `${r[c] / obs * 100}%`; $("c-" + c).textContent = `${fmt(r[c])} km²`; });
+    $("excluded").textContent = HMIN > 0.2 ? `Not counted: lower greenness (NDVI 0.2–0.4), such as sparse grass and shrubs: ${fmt(r.lower)} km².` : "";
+    const cur = dates[k].getUTCFullYear() * 12 + dates[k].getUTCMonth();
+    document.querySelectorAll("#months .bar-g").forEach(gp => {
+      const o = months[+gp.dataset.j], on = o.y * 12 + o.m === cur;
+      gp.style.opacity = on ? 1 : 0.42;
+      gp.querySelector(".ml").setAttribute("fill", on ? "var(--ink)" : "var(--muted)");
+      gp.querySelector(".ml").setAttribute("font-weight", on ? "600" : "400");
+    });
+  }
+  function tweenNumbers(dt) {
+    const t = numTw; if (Math.abs(t.target - t.cur) < 0.5) t.cur = t.target; else t.cur += (t.target - t.cur) * Math.min(1, dt * 9);
+    const v = Math.round(t.cur);
+    if (v !== t.last) { t.el.innerHTML = `${v.toLocaleString("en-US")}<small>km²</small>`; t.last = v; }
+  }
+
+  // province view
+  function provSeriesSVG(p) {
+    const W = 320, H = 108, top = 8, x = k => 28 + k / (n - 1) * (W - 36);
+    let maxv = 0.2; for (let k = 0; k < n; k++) maxv = Math.max(maxv, pSum[k * (P + 1) + p] / pArea[p]);
+    maxv = Math.ceil(maxv * 10) / 10;
+    const y = v => top + (1 - v / maxv) * (H - top);
+    let pts = ""; for (let k = 0; k < n; k++) pts += `${x(k).toFixed(1)},${y(pSum[k * (P + 1) + p] / pArea[p]).toFixed(1)} `;
+    let g = "";
+    for (let v = 0; v <= maxv + 1e-6; v += 0.2) g += `<line x1="28" x2="${W - 8}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="22" y="${(y(v) + 4).toFixed(1)}" font-size="12" text-anchor="end" fill="var(--muted)">${v.toFixed(1)}</text>`;
+    let d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 1)), j = 0;
+    while (d <= z) { if (j % 2 === 0) g += `<text x="${x(dateToPos(d)).toFixed(1)}" y="${H + 20}" font-size="12" text-anchor="middle" fill="var(--muted)">${MON[d.getUTCMonth()]}</text>`;
+      d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); j++; }
+    return g + `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/><line id="sLine" y1="${top}" y2="${H}" stroke="var(--ink)" stroke-width="1"/><circle id="sDot" r="3.5" fill="var(--ink)"/><rect id="sHit" x="28" y="0" width="${W - 36}" height="${H + 24}" fill="transparent" style="cursor:pointer"/>`;
+  }
+  function setProvPanel(k) {
+    if (!selP) return;
+    const v = pSum[k * (P + 1) + selP] / pArea[selP], gshare = pGreen[k * (P + 1) + selP] / pArea[selP];
+    $("provMean").textContent = `NDVI ${v.toFixed(2)}`;
+    $("provShare").textContent = `Mean on the display grid for ${periodShort(k)}. ${(gshare * 100).toFixed(0)}% of the province's cells are at NDVI ≥ ${HMIN}.`;
+    const X = 28 + pos / (n - 1) * (320 - 36), vv = pSum[Math.round(pos) * (P + 1) + selP] / pArea[selP];
+    const svg = $("series"), line = svg.querySelector("#sLine"), dot = svg.querySelector("#sDot");
+    const maxv = +svg.dataset.max;
+    line.setAttribute("x1", X); line.setAttribute("x2", X);
+    dot.setAttribute("cx", X); dot.setAttribute("cy", 8 + (1 - vv / maxv) * 100);
+  }
+  function selectProvince(p) {
+    selP = p; frameDirty = true;
+    $("back").hidden = !p; $("natView").hidden = !!p || compare; $("provView").hidden = !p || compare;
+    $("headTitle").textContent = p ? pnames[p - 1] : compare ? "Compare two dates" : `Area with NDVI ≥ ${HMIN}`;
+    if (p) {
+      const svg = $("series"); svg.innerHTML = provSeriesSVG(p);
+      let maxv = 0.2; for (let k = 0; k < n; k++) maxv = Math.max(maxv, pSum[k * (P + 1) + p] / pArea[p]);
+      svg.dataset.max = Math.ceil(maxv * 10) / 10;
+      svg.querySelector("#sHit").addEventListener("click", e => {
+        const r = svg.getBoundingClientRect(), fx = ((e.clientX - r.left) / r.width * 320 - 28) / (320 - 36);
+        goTo(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1)))));
+      });
+      const [x0, y0, x1, y1] = boxLL(p); flyTo(x0, y0, x1, y1, 0.62, 1.4);
+      document.querySelectorAll("#presets button").forEach(b => b.classList.remove("on"));
+      setProvPanel(Math.round(pos));
+    }
+  }
+  $("back").addEventListener("click", () => { selectProvince(0); preset("overview"); });
+
+  // ---------- story panel ----------
+  function seeingText(k) {
+    const po = k * (P + 1), tot = nGreen[k];
+    if (tot < nArea * 0.005) return `Very little of the map reaches NDVI ≥ ${HMIN} in this composite.`;
+    if (!pid) return `On the map, ${(tot / nArea * 100).toFixed(0)}% of cells are at NDVI ≥ ${HMIN} in this composite.`;
+    let b1 = -1, b2 = -1;
+    for (let p = 0; p <= P; p++) { const v = pGreen[po + p]; if (b1 < 0 || v > pGreen[po + b1]) { b2 = b1; b1 = p; } else if (b2 < 0 || v > pGreen[po + b2]) b2 = p; }
+    const nm = p => p ? pnames[p - 1] : "areas outside the listed provinces";
+    const s1 = Math.round(pGreen[po + b1] / tot * 100), s2 = b2 >= 0 ? Math.round(pGreen[po + b2] / tot * 100) : 0;
+    return `On the map, most land at NDVI ≥ ${HMIN} is in ${nm(b1)} (${s1}%)` + (s2 >= 10 ? ` and ${nm(b2)} (${s2}%).` : ".");
+  }
+  function updatePanel() {
+    const k = Math.round(pos);
+    placeScrubTip();
+    if (selP) setProvPanel(k);
+    if (k === lastK) return;
+    const s = dates[k];
+    $("month").textContent = monthly ? s.getUTCFullYear() : `${SENSOR[J.sensors[k]] || ""} composite, ${s.getUTCFullYear()}`;
+    $("date").textContent = monthly ? MONL[s.getUTCMonth()] : periodShort(k);
+    $("caption").textContent = SEASON[s.getUTCMonth()];
+    $("seeing").textContent = seeingText(k);
+    scrubTip.textContent = `${periodText(k)}, ${SENSOR[J.sensors[k]] || ""}`;
+    setStats(k);
+    lastK = k;
+  }
+
+  // ---------- compare ----------
+  const cmpA = $("cmpA"), cmpB = $("cmpB"), swipe = $("swipe");
+  cmpA.max = cmpB.max = n - 1;
+  function nearestTo(y, m, d) { const t = Date.UTC(y, m, d); let best = 0; dates.forEach((x, k) => { if (Math.abs(x - t) < Math.abs(dates[best] - t)) best = k; }); return best; }
+  function setCompare(on) {
+    compare = on; $("cmpBtn").setAttribute("aria-pressed", on);
+    setPlaying(false);
+    if (on && !meshB) meshB = makeMesh();
+    if (on && !cmpA.dataset.init) { cA = 0; cB = nearestTo(a.getUTCFullYear() + 1, 1, 15); cmpA.dataset.init = 1; }
+    document.body.classList.toggle("comparing", on);
+    if (!on) lastK = -1;
+    if (meshB) meshB.visible = on;
+    swipe.hidden = !on; $("swipeL").hidden = !on; $("swipeR").hidden = !on;
+    $("cmpbar").hidden = !on; tl.hidden = on;
+    $("cmpView").hidden = !on; $("natView").hidden = on || !!selP; $("provView").hidden = on || !selP;
+    $("headTitle").textContent = on ? "Compare two dates" : selP ? pnames[selP - 1] : `Area with NDVI ≥ ${HMIN}`;
+    placeSwipe(); markHeights();
+  }
+  function placeSwipe() {
+    const x = split * innerWidth;
+    swipe.style.left = x + "px";
+    $("swipeL").style.left = Math.max(8, x - 12 - $("swipeL").offsetWidth) + "px";
+    $("swipeR").style.left = (x + 12) + "px";
+    needsRender = true;
+  }
+  function updateCompare() {
+    cmpA.value = cA; cmpB.value = cB;
+    $("cmpALab").textContent = periodText(cA); $("cmpBLab").textContent = periodText(cB);
+    $("swipeL").textContent = periodShort(cA); $("swipeR").textContent = periodShort(cB);
+    $("month").textContent = "Comparing two composites";
+    $("date").textContent = `${MON[dates[cA].getUTCMonth()]} vs ${MON[dates[cB].getUTCMonth()]}`;
+    $("caption").textContent = "Drag the divider on the map";
+    $("seeing").textContent = `Left: ${periodText(cA)}. Right: ${periodText(cB)}.`;
+    if (stats) {
+      const ga = green(stats[cA]), gb = green(stats[cB]);
+      $("cmpLd").textContent = periodShort(cA); $("cmpRd").textContent = periodShort(cB);
+      $("cmpLv").textContent = `${fmt(ga)} km²`; $("cmpRv").textContent = `${fmt(gb)} km²`;
+      const dlt = gb - ga;
+      $("cmpDiff").textContent = `Right minus left: ${dlt >= 0 ? "+" : "−"}${fmt(Math.abs(dlt))} km² (${dlt >= 0 ? "+" : "−"}${Math.abs(dlt / Math.max(ga, 1) * 100).toFixed(0)}%).`;
+    }
+    placeSwipe();
+  }
+  cmpA.addEventListener("input", () => { cA = +cmpA.value; frameDirty = true; });
+  cmpB.addEventListener("input", () => { cB = +cmpB.value; frameDirty = true; });
+  $("cmpBtn").addEventListener("click", () => setCompare(!compare));
+  $("cmpDone").addEventListener("click", () => setCompare(false));
+  swipe.addEventListener("pointerdown", e => {
+    swipe.setPointerCapture(e.pointerId);
+    const mv = ev => { split = Math.max(0.05, Math.min(0.95, ev.clientX / innerWidth)); placeSwipe(); };
+    const up = () => { swipe.removeEventListener("pointermove", mv); swipe.removeEventListener("pointerup", up); };
+    swipe.addEventListener("pointermove", mv); swipe.addEventListener("pointerup", up);
+  });
+
+  // ---------- hover + click ----------
+  const tip = $("tip"), ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let hoverX = 0, hoverY = 0, hoverOn = false, hoverDirty = false, lastTipCell = -2, lastTipK = -1;
+  function pick(cx, cy) {
+    const g = (compare && meshB && cx > split * innerWidth) ? meshB.geometry : meshA.geometry;
+    ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const o = ray.ray.origin, d = ray.ray.direction;
+    if (d.y >= -1e-6) return -1;
+    const top = Math.max(hmax, 0.001) + 0.01;
+    const t0 = Math.max(0, (top - o.y) / d.y), t1 = (-0.001 - o.y) / d.y;
+    const Pp = g.attributes.position.array, steps = 500, dt = (t1 - t0) / steps;
+    for (let s = 0; s <= steps; s++) {
+      const t = t0 + s * dt, x = o.x + d.x * t, y = o.y + d.y * t, zz = o.z + d.z * t;
+      const ix = Math.round((x + pw / 2) / pw * (w - 1)), iy = Math.round((zz + ph / 2) / ph * (h - 1));
+      if (ix < 0 || iy < 0 || ix >= w || iy >= h) continue;
+      const i = iy * w + ix;
+      if (valid[i] && y <= Pp[i * 3 + 2] + 1e-4) return i;
+    }
+    return -1;
+  }
+  function nearestPlace(i) {
+    const lat = N0 - (Math.floor(i / w) + 0.5) * res, lon = W0 + (i % w + 0.5) * res, cl = Math.cos(lat * Math.PI / 180);
+    let best = null, bd = 1e9;
+    for (const p of PLACES) { if (p[4] === "river") continue;
+      const dx = (lon - p[2]) * cl * 111.32, dy = (lat - p[1]) * 111.32, dd = Math.hypot(dx, dy); if (dd < bd) { bd = dd; best = p[0]; } }
+    return bd < 80 ? `${Math.round(bd / 5) * 5 || "<5"} km from ${best}` : "";
+  }
+  function doHover() {
+    const i = pick(hoverX, hoverY);
+    if (i < 0) { if (!tip.hidden) tip.hidden = true; lastTipCell = -2; return; }
+    const pnow = compare ? (hoverX > split * innerWidth ? cB : cA) : pos;
+    const k = Math.round(pnow);
+    if (i !== lastTipCell || k !== lastTipK) {
+      const k0 = Math.floor(pnow), k1 = Math.min(k0 + 1, n - 1), t = pnow - k0;
+      const q0 = frames[k0 * cells + i], q1 = frames[k1 * cells + i];
+      const v = ((q0 ? (q0 - 1) / 254 : 0) * (1 - t) + (q1 ? (q1 - 1) / 254 : 0) * t) * NMAX;
+      const cls = v < 0.2 ? "Below 0.2: bare or very sparse" : v < 0.4 ? "Lower greenness" : v < 0.6 ? "Medium greenness" : "Higher greenness";
+      const where = pid ? (pid[i] ? pnames[pid[i] - 1] : "Outside listed provinces") : "";
+      const near = nearestPlace(i);
+      tip.innerHTML = `<b>NDVI ${v >= NMAX - 0.002 ? "≥ " + NMAX.toFixed(2) : v.toFixed(2)}</b>, ${cls}<span>${[where, near].filter(Boolean).join(", ")}</span><span>${periodShort(k)}, ~3 km display cell</span>`;
+      lastTipCell = i; lastTipK = k;
+    }
+    tip.hidden = false;
+    const tx = Math.min(hoverX + 14, innerWidth - tip.offsetWidth - 8), ty = Math.min(hoverY + 14, innerHeight - tip.offsetHeight - 8);
+    tip.style.transform = `translate(${tx}px, ${ty}px)`;
+  }
+  let down = null;
+  canvas.addEventListener("pointermove", e => { hoverX = e.clientX; hoverY = e.clientY; hoverOn = e.pointerType === "mouse"; hoverDirty = true; });
+  canvas.addEventListener("pointerleave", () => { hoverOn = false; tip.hidden = true; });
+  canvas.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; canvas.classList.add("dragging"); });
+  canvas.addEventListener("pointerup", e => {
+    canvas.classList.remove("dragging");
+    if (!down) return;
+    const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dtm = performance.now() - down.t; down = null;
+    if (moved < 6 && dtm < 500 && pid) { const i = pick(e.clientX, e.clientY); if (i >= 0 && pid[i]) selectProvince(pid[i]); }
+  });
+  controls.addEventListener("start", () => { setPlaying(false); fly.active = false; controls.enabled = true; });
+  controls.addEventListener("change", () => { needsRender = true; });
+
+  // ---------- controls ----------
+  function setPlaying(p) {
+    if (p && compare) return;
+    playing = p;
+    $("play").setAttribute("aria-label", p ? "Pause" : "Play");
+    $("playIcon").innerHTML = p ? '<path d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor"/>' : '<path d="M4 2.5v11l9-5.5z" fill="currentColor"/>';
+    if (p) { interacted(); anim.active = false; if (pos >= n - 1) pos = 0; }
+  }
+  function goTo(k) {
+    if (reduceMotion) { pos = k; slider.value = pos; frameDirty = true; return; }
+    anim.from = pos; anim.to = k; anim.t0 = performance.now(); anim.active = true; setPlaying(false);
+  }
+  $("play").addEventListener("click", () => setPlaying(!playing));
+  function seg(id, fn) {
+    const g = $(id);
+    g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
+      g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); fn(b.dataset.v); });
+  }
+  seg("speed", v => { speed = +v; });
+  seg("hmode", v => { mode = v; $("relief").disabled = v === "flat"; markHeights(); });
+  document.querySelector(`#hmode [data-v="${mode}"]`).classList.add("on");
+  if (!dem) document.querySelector('#hmode [data-v="elev"]').remove();
+  $("relief").addEventListener("input", e => { relief = +e.target.value; markHeights(); });
+  $("reset").addEventListener("click", () => { selectProvince(0); preset("overview"); });
+  $("presets").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; if (selP) selectProvince(0); preset(b.dataset.p); });
+  const help = $("help");
+  $("helpBtn").addEventListener("click", () => { help.hidden = !help.hidden; $("helpBtn").setAttribute("aria-expanded", !help.hidden); });
+  slider.addEventListener("pointerdown", () => { setPlaying(false); anim.active = false; interacted(); tl.classList.add("scrubbing"); });
+  addEventListener("pointerup", () => tl.classList.remove("scrubbing"));
+  slider.addEventListener("input", () => { pos = +slider.value; anim.active = false; frameDirty = true; });
+  slider.addEventListener("change", () => goTo(Math.round(+slider.value)));
+  slider.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowLeft") e.preventDefault(); });
+
+  document.addEventListener("keydown", e => {
+    if (e.target.isContentEditable || (e.target.tagName === "INPUT" && e.target.type !== "range")) return;
+    const k = e.key;
+    if (e.code === "Space") { e.preventDefault(); setPlaying(!playing); }
+    else if (k === "ArrowRight" || k === "ArrowLeft") {
+      e.preventDefault(); interacted();
+      if (compare) { cB = Math.max(0, Math.min(n - 1, cB + (k === "ArrowRight" ? 1 : -1))); frameDirty = true; }
+      else goTo(Math.max(0, Math.min(n - 1, Math.round(anim.active ? anim.to : pos) + (k === "ArrowRight" ? 1 : -1))));
+    }
+    else if (/^[hH]$/.test(k)) document.body.classList.toggle("clean");
+    else if (/^[tT]$/.test(k)) document.body.classList.toggle("no-timeline");
+    else if (/^[vV]$/.test(k) && stats) { document.body.classList.toggle("no-cover"); applyOffset(); needsRender = true; }
+    else if (/^[cC]$/.test(k)) setCompare(!compare);
+    else if (k === "?") $("helpBtn").click();
+    else if (/^[1-4]$/.test(k)) { if (selP) selectProvince(0); preset(["overview", "indus", "north", "baloch"][+k - 1]); }
+    else if (k === "Escape") { if (!help.hidden) $("helpBtn").click(); else if (compare) setCompare(false); else if (selP) { selectProvince(0); preset("overview"); } }
+  });
+  let lastW = 0;
+  function resize() {
+    renderer.setSize(innerWidth, innerHeight, false); applyOffset(); if (compare) placeSwipe(); needsRender = true; lastScale = -1;
+    if ((lastW > 900) !== (innerWidth > 900) && lastW) { selectProvince(0); preset("overview"); }
+    lastW = innerWidth;
+  }
+  addEventListener("resize", resize);
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function render() {
+    if (compare && meshB) {
+      const sx = Math.round(split * innerWidth), H = innerHeight;
+      renderer.setScissorTest(true);
+      meshA.visible = true; meshB.visible = false; renderer.setScissor(0, 0, sx, H); renderer.render(scene, camera);
+      meshA.visible = false; meshB.visible = true; renderer.setScissor(sx, 0, innerWidth - sx, H); renderer.render(scene, camera);
+      renderer.setScissorTest(false); meshA.visible = true;
+    } else renderer.render(scene, camera);
+  }
+  function loop(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (playing) { pos += dt * speed; if (pos >= n - 1) { pos = n - 1; setPlaying(false); } slider.value = pos; frameDirty = true; }
+    if (anim.active) {
+      const e = Math.min(1, (now - anim.t0) / anim.dur);
+      pos = anim.from + (anim.to - anim.from) * ease(e); slider.value = pos; frameDirty = true;
+      if (e >= 1) anim.active = false;
+    }
+    if (fly.active) {
+      const e = ease(Math.min(1, (now - fly.t0) / fly.dur));
+      controls.target.lerpVectors(fly.fT, fly.tT, e); camera.position.lerpVectors(fly.fP, fly.tP, e);
+      if (e >= 1) fly.active = false; needsRender = true;
+    }
+    if (frameDirty) {
+      if (compare && meshB) { writeFrame(meshA.geometry, cA); writeFrame(meshB.geometry, cB); updateCompare(); }
+      else writeFrame(meshA.geometry, pos);
+      updatePanel(); frameDirty = false; needsRender = true; hoverDirty = true;
+    }
+    if (controls.update()) needsRender = true;
+    tweenNumbers(dt);
+    if (needsRender) { render(); updateLabels(); updateCues(); needsRender = false; hoverDirty = true; }
+    if (hoverDirty && hoverOn && !down) { doHover(); hoverDirty = false; }
+    requestAnimationFrame(loop);
+  }
+  resize();
+  writeFrame(meshA.geometry, 0);
+  const [bx0, by0, bx1, by1, bpol] = PRESETS.overview();
+  viewFor(lonX(bx0), lonX(bx1), latZ(by1), latZ(by0), bpol, controls.target, camera.position);
+  controls.update();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
